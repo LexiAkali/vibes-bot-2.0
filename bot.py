@@ -1,15 +1,21 @@
-import os
+import os, sys
 import discord
 from discord.ext import commands, tasks
 import json
 import random
+from dotenv import load_dotenv
 from datetime import datetime
+load_dotenv()
+# Get the bot token from the environment variable
+TOKEN = os.getenv('DISCORD_TOKEN')
 
-intents = discord.Intents.default()
-intents.members = True
+if TOKEN is None:
+    print("Error: Discord bot token not found. Set DISCORD_TOKEN in the .env file")
+    sys.exit(1)
 
 intents = discord.Intents.default()
 intents.messages = True
+intents.message_content = True
 
 bot = commands.Bot(command_prefix="$", intents=intents)
 
@@ -82,10 +88,5 @@ async def hello(ctx):
 async def ping(ctx):
     await ctx.send("Pong!")
 
-# Get the bot token from the environment variable
-bot_token = os.environ.get('DISCORD_BOT_TOKEN')
 
-if bot_token is None:
-    print("Error: Discord bot token not found. Set the DISCORD_BOT_TOKEN environment variable.")
-else:
-    bot.run(bot_token)
+bot.run(TOKEN)
