@@ -8,7 +8,6 @@ from datetime import datetime
 intents = discord.Intents.default()
 intents.members = True
 
-# Create an Intents object and enable the MESSAGE CONTENT intent
 intents = discord.Intents.default()
 intents.messages = True
 
