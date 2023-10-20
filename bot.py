@@ -47,7 +47,7 @@ async def on_message(message):
     else:
         time_diff = (current_time - last_message_time[user_id]).total_seconds()
         if time_diff < 60:
-            return
+        return
 
     if user_id not in xp_data:
         xp_data[user_id] = 50  # Set the base XP
