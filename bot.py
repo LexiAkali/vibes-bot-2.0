@@ -47,6 +47,8 @@ async def on_message(message):
 
     user_id = str(message.author.id)
     current_time = datetime.now()
+    
+    await bot.process_commands(message)
 
     if user_id not in last_message_time:
         last_message_time[user_id] = current_time
@@ -62,7 +64,6 @@ async def on_message(message):
     last_message_time[user_id] = current_time
     save_xp_data()
 
-    await bot.process_commands(message)
 
 @tasks.loop(minutes=10)
 async def xp_task():
