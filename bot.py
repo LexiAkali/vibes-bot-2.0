@@ -63,11 +63,14 @@ def calculate_level_and_xp(user_id):
         return level, xp_remaining
     return 0, 0
 
-# Function to notify a user when they level up in a specific channel
-async def notify_level_up(channel, user, new_level):
-    await channel.send(f"Congratulations, {user.mention}! You've reached level {new_level}.")
+# Function to notify a user when they level up
+async def notify_level_up(user, new_level):
+    await user.send(f"Congratulations! You've reached level {new_level}!")
 
-# Modify the on_message event to call the updated function
+@bot.event
+async def on_ready():
+    print(f"Logged in as {bot.user.name}")
+
 @bot.event
 async def on_message(message):
     if message.author.bot:
@@ -101,10 +104,7 @@ async def on_message(message):
             new_level, _ = calculate_level_and_xp(user_id)
             if new_level > level:
                 user = message.author
-                # Replace 'your_channel_id' with the actual channel ID where you want to send the message
-                channel = bot.get_channel(1159499219938320425)
-                if channel:
-                    await notify_level_up(channel, user, new_level)
+                await notify_level_up(user, new_level)
 
 @bot.command()
 async def level(ctx, user: discord.User = None):
@@ -116,16 +116,27 @@ async def level(ctx, user: discord.User = None):
         level, xp_remaining = calculate_level_and_xp(user_id)
 
         if level < len(level_xp_requirements):
-            required_xp_for_next_level = level_xp_requirements[level]
-
-            response = (
-                f"{user.name} is level {level}, and needs {required_xp_for_next_level - current_xp} more XP to reach the next level."
-            )
+            xp_needed_for_next_level = level_xp_requirements[level]
+            response = f"{user.name} is level {level}, and needs {xp_needed_for_next_level - current_xp} more XP to reach the next level."
             await ctx.send(response)
         else:
-            await ctx.send("Congratulations! You've reached the highest level.")
+            await ctx.send(f"{user.name} is at the maximum level!")
     else:
         await ctx.send("User not found or has no XP.")
+
+@bot.command()
+async def leaderboard(ctx):
+    sorted_xp = sorted(xp_data.items(), key=lambda x: x[1], reverse=True)
+    leaderboard_text = "Leaderboard:\n"
+
+    for index, (user_id, xp) in enumerate(sorted_xp[:10], start=1):
+        user = bot.get_user(int(user_id))
+        if user is not None:
+            leaderboard_text += f"{index}. {user.name}: {xp} XP\n"
+        else:
+            leaderboard_text += f"{index}. Unknown User: {xp} XP (User not found)\n"
+
+    await ctx.send(leaderboard_text)
 
 @bot.command()
 async def hello(ctx):
