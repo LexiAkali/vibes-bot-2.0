@@ -2,10 +2,11 @@ import os, sys
 import discord
 from discord.ext import commands, tasks
 import json
-import random
 from dotenv import load_dotenv
-from datetime import datetime
+from datetime import datetime, timedelta
+
 load_dotenv()
+
 # Get the bot token from the environment variable
 TOKEN = os.getenv('DISCORD_TOKEN')
 
@@ -19,9 +20,22 @@ intents.message_content = True
 
 bot = commands.Bot(command_prefix="$", intents=intents)
 
-# Defining a dictionary to store user XP
+# Define a base XP per message
+BASE_XP_PER_MESSAGE = 50
+
+# Define the XP data and last message time dictionaries
 xp_data = {}
 last_message_time = {}
+
+# Define the XP required for each level
+level_xp_requirements = [
+    # Levels 0-20
+    100, 155, 220, 295, 380, 475, 580, 695, 820, 955, 1100, 1255, 1420, 1595, 1780, 1975, 2180, 2395, 2620, 2855, 3100,
+    # Levels 21-40
+    3355, 3620, 3895, 4180, 4475, 4780, 5095, 5420, 5755, 6100, 6455, 6820, 7195, 7580, 7975, 8380, 8795, 9220, 9655, 10100,
+    # Levels 41-60
+    10555, 11020, 11495, 11980, 12475, 12980, 13495, 14020, 14555, 15100, 15655, 16220, 16795, 17380, 17975, 18580, 19195, 19820, 20455, 21100
+]
 
 # Loading XP data from a JSON file when I get one
 try:
@@ -35,11 +49,25 @@ def save_xp_data():
     with open("xp.json", "w") as file:
         json.dump(xp_data, file)
 
-@bot.event
-async def on_ready():
-    print(f"Logged in as {bot.user.name}")
-    xp_task.start()
+# Function to calculate user's level and remaining XP
+def calculate_level_and_xp(user_id):
+    if user_id in xp_data:
+        total_xp = xp_data[user_id]
 
+        level = 0
+        xp_remaining = total_xp
+        while level < len(level_xp_requirements) and xp_remaining >= level_xp_requirements[level]:
+            xp_remaining -= level_xp_requirements[level]
+            level += 1
+
+        return level, xp_remaining
+    return 0, 0
+
+# Function to notify a user when they level up in a specific channel
+async def notify_level_up(channel, user, new_level):
+    await channel.send(f"Congratulations, {user.mention}! You've reached level {new_level}.")
+
+# Modify the on_message event to call the updated function
 @bot.event
 async def on_message(message):
     if message.author.bot:
@@ -48,27 +76,35 @@ async def on_message(message):
     user_id = str(message.author.id)
     current_time = datetime.now()
 
-    if user_id not in last_message_time:
-        last_message_time[user_id] = current_time
-    else:
-        time_diff = (current_time - last_message_time[user_id]).total_seconds()
-        if time_diff < 60:
-            return
-
-    if user_id not in xp_data:
-        xp_data[user_id] = 50  # Set the base XP
-
-    xp_data[user_id] += random.randint(10, 20)  # Add random XP
-    last_message_time[user_id] = current_time
-    save_xp_data()
-
     await bot.process_commands(message)
 
-@tasks.loop(minutes=10)
-async def xp_task():
-    for user_id in list(xp_data.keys()):
-        xp_data[user_id] += 10  # Add 10 XP every 10 minutes
-    save_xp_data()
+    if user_id not in last_message_time:
+        last_message_time[user_id] = current_time
+
+    time_diff = (current_time - last_message_time[user_id]).total_seconds()
+
+    if time_diff >= 60:  # Check if it's been at least 60 seconds
+        if user_id not in xp_data:
+            xp_data[user_id] = 0  # Initialize XP
+
+        # Calculate the user's level and remaining XP
+        level, xp_remaining = calculate_level_and_xp(user_id)
+
+        # Grant XP based on level
+        if level < len(level_xp_requirements):
+            xp_to_grant = BASE_XP_PER_MESSAGE
+            xp_data[user_id] += xp_to_grant
+            last_message_time[user_id] = current_time
+            save_xp_data()
+
+            # Check if the user leveled up and notify them
+            new_level, _ = calculate_level_and_xp(user_id)
+            if new_level > level:
+                user = message.author
+                # Replace 'your_channel_id' with the actual channel ID where you want to send the message
+                channel = bot.get_channel(1159499219938320425)
+                if channel:
+                    await notify_level_up(channel, user, new_level)
 
 @bot.command()
 async def level(ctx, user: discord.User = None):
@@ -76,7 +112,18 @@ async def level(ctx, user: discord.User = None):
     user_id = str(user.id)
 
     if user_id in xp_data:
-        await ctx.send(f"{user.name} is level {xp_data[user_id] // 100}")
+        current_xp = xp_data[user_id]
+        level, xp_remaining = calculate_level_and_xp(user_id)
+
+        if level < len(level_xp_requirements):
+            required_xp_for_next_level = level_xp_requirements[level]
+
+            response = (
+                f"{user.name} is level {level}, and needs {required_xp_for_next_level - current_xp} more XP to reach the next level."
+            )
+            await ctx.send(response)
+        else:
+            await ctx.send("Congratulations! You've reached the highest level.")
     else:
         await ctx.send("User not found or has no XP.")
 
@@ -87,6 +134,5 @@ async def hello(ctx):
 @bot.command()
 async def ping(ctx):
     await ctx.send("Pong!")
-
 
 bot.run(TOKEN)
