@@ -63,13 +63,33 @@ async def on_message(message):
 
     await bot.process_commands(message)
 
-<<<<<<< HEAD
-    await bot.process_commands(message)
-=======
-    if user_id not in last_message_time:
-        last_message_time[user_id] = current_time
+if user_id not in last_message_time:
+    last_message_time[user_id] = current_time
 
     time_diff = (current_time - last_message_time[user_id]).total_seconds()
+
+    if time_diff >= 60:  # Check if it's been at least 60 seconds
+        if user_id not in xp_data:
+            xp_data[user_id] = 0  # Initialize XP
+
+        # Calculate the user's level and remaining XP
+        level, xp_remaining = calculate_level_and_xp(user_id)
+
+        # Grant XP based on level
+        if level < len(level_xp_requirements):
+            xp_to_grant = BASE_XP_PER_MESSAGE
+            xp_data[user_id] += xp_to_grant
+            last_message_time[user_id] = current_time
+            save_xp_data()
+
+            # Check if the user leveled up and notify them
+            new_level, _ = calculate_level_and_xp(user_id)
+            if new_level > level:
+                user = message.author
+                if new_level > level:
+                    await notify_level_up(user, new_level)
+
+                await bot.process_commands(message)
 
     if time_diff >= 60:  # Check if it's been at least 60 seconds
         if user_id not in xp_data:
