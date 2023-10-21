@@ -78,8 +78,27 @@ async def on_message(message):
 
     user_id = str(message.author.id)
     current_time = datetime.now()
-
+    
     await bot.process_commands(message)
+
+<<<<<<< HEAD
+    await bot.process_commands(message)
+=======
+    if user_id not in last_message_time:
+        last_message_time[user_id] = current_time
+    else:
+        time_diff = (current_time - last_message_time[user_id]).total_seconds()
+        if time_diff < 60:
+            return
+
+    if user_id not in xp_data:
+        xp_data[user_id] = 50  # Set the base XP
+
+    xp_data[user_id] += random.randint(10, 20)  # Add random XP
+    last_message_time[user_id] = current_time
+    save_xp_data()
+
+>>>>>>> 36556f731b498fd2c74a9a8407094e3d5bcabebd
 
     if user_id not in last_message_time:
         last_message_time[user_id] = current_time
