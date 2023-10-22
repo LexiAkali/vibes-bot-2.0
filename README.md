@@ -3,3 +3,5 @@
 Vibes discord bot (WIP)
 
 Originally made to run with docker, now being adapted to work without.
+
+Now works without docker.
